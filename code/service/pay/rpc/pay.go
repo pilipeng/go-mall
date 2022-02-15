@@ -1,0 +1,34 @@
+package main
+
+import (
+	"flag"
+	"fmt"
+
+	"mall/service/pay/rpc/internal/config"
+	"mall/service/pay/rpc/internal/server"
+	"mall/service/pay/rpc/internal/svc"
+	"mall/service/pay/rpc/pay"
+
+	"github.com/tal-tech/go-zero/core/conf"
+	"github.com/tal-tech/go-zero/zrpc"
+	"google.golang.org/grpc"
+)
+
+var configFile = flag.String("f", "etc/pay.yaml", "the config file")
+
+func main() {
+	flag.Parse()
+
+	var c config.Config
+	conf.MustLoad(*configFile, &c)
+	ctx := svc.NewServiceContext(c)
+	srv := server.NewPayServer(ctx)
+
+	s := zrpc.MustNewServer(c.RpcServerConf, func(grpcServer *grpc.Server) {
+		pay.RegisterPayServer(grpcServer, srv)
+	})
+	defer s.Stop()
+
+	fmt.Printf("Starting rpc server at %s...\n", c.ListenOn)
+	s.Start()
+}
